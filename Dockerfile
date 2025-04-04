@@ -1,6 +1,6 @@
 FROM python:3.13.2
 
-WORKDIR /app/server
+WORKDIR /app/server_knowledge_base
 
 COPY . .
 

@@ -22,7 +22,7 @@ services:
       - web_network
 
   server:
-    container_name: server
+    container_name: server_knowledge_base
     build: .
     command: python src/main.py
     ports:
@@ -30,7 +30,7 @@ services:
     depends_on:
       - postgresql
     volumes:
-      - .:/app/server
+      - .:/app/server_knowledge_base
     networks:
       - web_network
 

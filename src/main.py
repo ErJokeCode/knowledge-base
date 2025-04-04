@@ -6,6 +6,8 @@ import uvicorn
 
 from config import settings
 
+from routers.category import router as r_category
+
 
 _log = logging.getLogger(__name__)
 
@@ -34,7 +36,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# app.include_router()
+app.include_router(r_category)
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

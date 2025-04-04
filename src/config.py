@@ -4,7 +4,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import BaseModel
 import logging
 from pathlib import Path
-from cryptography.fernet import Fernet
 
 _log = logging.getLogger(__name__)
 
