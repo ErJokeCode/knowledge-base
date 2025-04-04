@@ -1,0 +1,43 @@
+services:
+  postgresql:
+    image: postgres:latest
+    container_name: postgres_knowledge_base
+    env_file:
+      - .env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - web_network
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "8001:80"
+    depends_on:
+      - postgresql
+    networks:
+      - web_network
+
+  server:
+    container_name: server
+    build: .
+    command: python src/main.py
+    ports:
+      - 8000:8000
+    depends_on:
+      - postgresql
+    volumes:
+      - .:/app/server
+    networks:
+      - web_network
+
+volumes:
+  postgres_data:
+
+
+networks:
+  web_network:
+    driver: bridge
