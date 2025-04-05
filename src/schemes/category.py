@@ -23,7 +23,6 @@ class OutputCategoryDTO(BaseModel):
     id: UUID
     name: str
     description: str
-    questions: list[OutputQuestionDTO] = []
 
     class Config:
         from_attributes = True

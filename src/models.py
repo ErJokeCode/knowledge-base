@@ -1,9 +1,10 @@
 
 
 import datetime
+import enum
 from typing import Annotated
 
-from sqlalchemy import UUID, ForeignKey, Numeric, String, Text
+from sqlalchemy import UUID, BigInteger, ForeignKey, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 import uuid
 
@@ -19,6 +20,7 @@ str_500 = Annotated[str, mapped_column(String(500))]
 text = Annotated[str, mapped_column(Text)]
 datetime_ = Annotated[datetime.datetime, mapped_column()]
 num_ = Annotated[Numeric, mapped_column(Numeric(precision=4, scale=3))]
+bint = Annotated[int, mapped_column(BigInteger)]
 
 
 # Модель категории
@@ -28,7 +30,6 @@ class Category(Base):
     id: Mapped[uuidpk]
     name: Mapped[str_64]
     description: Mapped[str_255]
-    is_active: Mapped[bool] = mapped_column(default=True)
 
     questions: Mapped[list["Question"]] = relationship(
         back_populates="category"
@@ -49,7 +50,6 @@ class Question(Base):
     created_at: Mapped[datetime_] = mapped_column(
         default=datetime.datetime.now
     )
-    is_active: Mapped[bool] = mapped_column(default=True)
 
     category: Mapped["Category"] = relationship(
         back_populates="questions"
@@ -72,12 +72,11 @@ class Answer(Base):
     )
 
     answer: Mapped[text]
-    link: Mapped[text]
+    rating: Mapped[num_] = mapped_column(default=0.0)
 
     created_at: Mapped[datetime_] = mapped_column(
         default=datetime.datetime.now
     )
-    is_active: Mapped[bool] = mapped_column(default=True)
 
     question: Mapped["Question"] = relationship(
         back_populates="answers"
@@ -85,6 +84,35 @@ class Answer(Base):
     feedbacks: Mapped[list["Feedback"]] = relationship(
         back_populates="answer"
     )
+    tag_answers: Mapped[list["TagAnswer"]] = relationship(
+        back_populates="answer"
+    )
+    links: Mapped[list["LinkAnswer"]] = relationship(
+        back_populates="answer"
+    )
+    files: Mapped[list["MinioFileAnswer"]] = relationship(
+        back_populates="answer"
+    )
+
+
+class LinkAnswer(Base):
+    __tablename__ = "link"
+
+    id: Mapped[uuidpk]
+    id_answer: Mapped[UUID] = mapped_column(
+        ForeignKey("answer.id", ondelete="CASCADE")
+    )
+    link: Mapped[text]
+
+    answer: Mapped["Answer"] = relationship(
+        back_populates="links"
+    )
+
+
+class TypeTag(enum.Enum):
+    question = "question"
+    answer = "answer"
+    file = "file"
 
 
 # Модель тега для вопроса
@@ -94,8 +122,15 @@ class Tag(Base):
     id: Mapped[uuidpk]
 
     title: Mapped[str_64]
+    type: Mapped[TypeTag]
 
     tag_questions: Mapped[list["TagQuestion"]] = relationship(
+        back_populates="tag"
+    )
+    tag_answers: Mapped[list["TagAnswer"]] = relationship(
+        back_populates="tag"
+    )
+    tag_files: Mapped[list["TagFile"]] = relationship(
         back_populates="tag"
     )
 
@@ -119,6 +154,44 @@ class TagQuestion(Base):
     )
 
 
+class TagAnswer(Base):
+    __tablename__ = "tag_answer"
+
+    id: Mapped[uuidpk]
+    id_answer: Mapped[UUID] = mapped_column(
+        ForeignKey("answer.id", ondelete="CASCADE")
+    )
+    id_tag: Mapped[UUID] = mapped_column(
+        ForeignKey("tag.id", ondelete="CASCADE")
+    )
+
+    tag: Mapped["Tag"] = relationship(
+        back_populates="tag_answers"
+    )
+    answer: Mapped["Answer"] = relationship(
+        back_populates="tag_answers"
+    )
+
+
+class TagFile(Base):
+    __tablename__ = "tag_file"
+
+    id: Mapped[uuidpk]
+    id_tag: Mapped[UUID] = mapped_column(
+        ForeignKey("tag.id")
+    )
+    id_file: Mapped[UUID] = mapped_column(
+        ForeignKey("minio_file.id")
+    )
+
+    tag: Mapped["Tag"] = relationship(
+        back_populates="tag_files"
+    )
+    file: Mapped["MinioFile"] = relationship(
+        back_populates="tag_files"
+    )
+
+
 # Модель оценки ответа
 class Feedback(Base):
     __tablename__ = "feedback"
@@ -137,6 +210,46 @@ class Feedback(Base):
         back_populates="feedbacks"
     )
 
-# # Модель файла в minio
-# class MinioFile(Base):
-#     __tablename__ = "minio_file"
+
+# Модель файла в minio
+class MinioFile(Base):
+    __tablename__ = "minio_file"
+
+    id: Mapped[uuidpk]
+    id_tag: Mapped[UUID] = mapped_column(
+        ForeignKey("tag.id")
+    )
+
+    filename: Mapped[str_64]
+    bucket_name: Mapped[str_64]
+    key: Mapped[str_128]
+    size: Mapped[bint]
+    created_at: Mapped[datetime_] = mapped_column(
+        default=datetime.datetime.now
+    )
+
+    tag_files: Mapped[list["TagFile"]] = relationship(
+        back_populates="file"
+    )
+    answers: Mapped[list["MinioFileAnswer"]] = relationship(
+        back_populates="file"
+    )
+
+
+class MinioFileAnswer(Base):
+    __tablename__ = "minio_file_answer"
+
+    id: Mapped[uuidpk]
+    id_file: Mapped[UUID] = mapped_column(
+        ForeignKey("minio_file.id", ondelete="CASCADE")
+    )
+    id_answer: Mapped[UUID] = mapped_column(
+        ForeignKey("answer.id", ondelete="CASCADE")
+    )
+
+    answer: Mapped["Answer"] = relationship(
+        back_populates="files"
+    )
+    file: Mapped["MinioFile"] = relationship(
+        back_populates="answers"
+    )

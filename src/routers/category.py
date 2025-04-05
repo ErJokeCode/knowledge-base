@@ -35,7 +35,6 @@ async def get_categories(
         desc_int=desc,
         page=page,
         limit=limit,
-        has_is_active=True,
         is_pagination=True,
         is_model=False
     )
@@ -46,8 +45,8 @@ async def get_category(
     session: Annotated[AsyncSession, Depends(get_db_session)],
     id: UUID
 ) -> OutputCategoryDTO:
-    return await core_pg_orm.category.get_by(
-        session=session, is_model=False, is_get_none=False, id=id
+    return await core_pg_orm.category.get_by_query(
+        session=session, is_model=False, is_get_none=False, id=id, query=QCategory.get_one()
     )
 
 
@@ -57,7 +56,7 @@ async def create_category(
     data: AddCategoryDTO
 ) -> OutputCategoryDTO:
     return await core_pg_orm.category.add(
-        session=session, data=data, is_model=False
+        session=session, data=data, is_model=False, return_query=QCategory.get_one()
     )
 
 
@@ -71,7 +70,8 @@ async def update_category(
         session=session,
         id=id,
         edit_item=data,
-        is_model=False
+        is_model=False,
+        return_query=QCategory.get_one()
     )
 
 

@@ -3,7 +3,7 @@ from uuid import UUID
 from sqlalchemy import Select, select
 from sqlalchemy.orm import selectinload
 
-from models import Question, TagQuestion
+from models import Answer, Question, TagQuestion
 
 
 class QQuestion:
@@ -12,7 +12,16 @@ class QQuestion:
         return select(
             Question
         ).options(
-            selectinload(Question.answers),
+            selectinload(
+                Question.answers
+            ).selectinload(
+                Answer.tag_answers
+            ),
+            selectinload(
+                Question.answers
+            ).selectinload(
+                Answer.links
+            ),
             selectinload(
                 Question.tag_questions
             ).joinedload(
@@ -48,7 +57,16 @@ class QQuestion:
             )
 
         query = query.options(
-            selectinload(Question.answers),
+            selectinload(
+                Question.answers
+            ).selectinload(
+                Answer.tag_answers
+            ),
+            selectinload(
+                Question.answers
+            ).selectinload(
+                Answer.links
+            ),
             selectinload(
                 Question.tag_questions
             ).joinedload(

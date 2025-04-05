@@ -39,7 +39,6 @@ async def get_questions(
         desc_int=desc,
         page=page,
         limit=limit,
-        has_is_active=True,
         is_pagination=True,
         is_model=False
     )

@@ -25,7 +25,6 @@ class OutputQuestionDTO(BaseModel):
     id_category: UUID
     question: str
     created_at: datetime.datetime
-    is_active: bool
 
     answers: list[OutputAnswerDTO] = []
     tag_questions: list["Tag"] = []
