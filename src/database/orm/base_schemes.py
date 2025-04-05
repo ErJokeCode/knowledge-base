@@ -14,3 +14,7 @@ class ListDTO(BaseModel, Generic[T]):
 
     class Config:
         from_attributes = True
+
+
+class ResponseStatus(BaseModel):
+    status: str = "success"

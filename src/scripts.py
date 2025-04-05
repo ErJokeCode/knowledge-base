@@ -1,4 +1,4 @@
-from database import core_postgres
+from database import core_postgres, core_s3
 import asyncio
 import sys
 
@@ -16,3 +16,6 @@ if __name__ == "__main__":
 
     if "--recreate-tables" in sys.argv:
         asyncio.run(recreate_tables())
+
+    if "--create-bucket" in sys.argv:
+        asyncio.run(core_s3.create_bucket())

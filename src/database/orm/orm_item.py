@@ -3,10 +3,10 @@ from typing import Literal, Sequence, TypeVar, Generic, overload
 from uuid import UUID
 from fastapi import HTTPException
 from pydantic import BaseModel
-from sqlalchemy import Result, Select, asc, desc, func, select
+from sqlalchemy import Result, Select, asc, desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.orm.list_pagination import ListDTO
+from database.orm.base_schemes import ListDTO, ResponseStatus
 from database.postgres_core import Base
 
 
@@ -72,6 +72,8 @@ class ItemOrm(Generic[M, I, E, O]):
         self,
         session: AsyncSession,
         query_select: Select | None = None,
+        search: str | None = None,
+        search_fields: list[str] | None = None,
         sort_by: str | None = None,
         desc_int: int = 0,
         page: int = 1,
@@ -87,6 +89,8 @@ class ItemOrm(Generic[M, I, E, O]):
         self,
         session: AsyncSession,
         query_select: Select | None = None,
+        search: str | None = None,
+        search_fields: list[str] | None = None,
         sort_by: str | None = None,
         desc_int: int = 0,
         page: int = 1,
@@ -102,6 +106,8 @@ class ItemOrm(Generic[M, I, E, O]):
         self,
         session: AsyncSession,
         query_select: Select | None = None,
+        search: str | None = None,
+        search_fields: list[str] | None = None,
         sort_by: str | None = None,
         desc_int: int = 0,
         page: int = 1,
@@ -117,6 +123,8 @@ class ItemOrm(Generic[M, I, E, O]):
         self,
         session: AsyncSession,
         query_select: Select | None = None,
+        search: str | None = None,
+        search_fields: list[str] | None = None,
         sort_by: str | None = None,
         desc_int: int = 0,
         page: int = 1,
@@ -131,6 +139,8 @@ class ItemOrm(Generic[M, I, E, O]):
         self,
         session: AsyncSession,
         query_select: Select | None = None,
+        search: str | None = None,
+        search_fields: list[str] | None = None,
         sort_by: str | None = None,
         desc_int: int = 0,
         page: int = 1,
@@ -142,7 +152,20 @@ class ItemOrm(Generic[M, I, E, O]):
         _log.info("Get all %s", self.model.__name__)
 
         if query_select is None:
-            query_select = select(self.model)
+            query_select = select(
+                self.model
+            )
+
+        if search and search_fields:
+            search_conditions = []
+            for field in search_fields:
+                if hasattr(self.model, field):
+                    column = getattr(self.model, field)
+                    search_conditions.append(
+                        column.ilike(f"%{search}%"))  # type: ignore
+
+            if search_conditions:
+                query_select = query_select.filter(or_(*search_conditions))
 
         if page < 1:
             raise HTTPException(
@@ -210,6 +233,7 @@ class ItemOrm(Generic[M, I, E, O]):
     async def get_by(
         self,
         session: AsyncSession,
+        id: UUID | None = None,
         *,
         is_model: Literal[True],
         is_get_none: Literal[False],
@@ -220,6 +244,7 @@ class ItemOrm(Generic[M, I, E, O]):
     async def get_by(
         self,
         session: AsyncSession,
+        id: UUID | None = None,
         *,
         is_model: Literal[False],
         is_get_none: Literal[False],
@@ -230,6 +255,7 @@ class ItemOrm(Generic[M, I, E, O]):
     async def get_by(
         self,
         session: AsyncSession,
+        id: UUID | None = None,
         *,
         is_model: Literal[True],
         is_get_none: Literal[True],
@@ -240,6 +266,7 @@ class ItemOrm(Generic[M, I, E, O]):
     async def get_by(
         self,
         session: AsyncSession,
+        id: UUID | None = None,
         *,
         is_model: Literal[False],
         is_get_none: Literal[True],
@@ -249,6 +276,7 @@ class ItemOrm(Generic[M, I, E, O]):
     async def get_by(
             self,
             session: AsyncSession,
+            id: UUID | None = None,
             is_model: bool = True,
             is_get_none: bool = True,
             **kwargs) -> O | M | None:
@@ -256,7 +284,12 @@ class ItemOrm(Generic[M, I, E, O]):
 
         query = select(
             self.model
-        ).filter_by(
+        )
+
+        if id is not None:
+            query = query.filter_by(id=id)
+
+        query = query.filter_by(
             **kwargs
         )
 
@@ -274,19 +307,111 @@ class ItemOrm(Generic[M, I, E, O]):
 
         return self.out_scheme.model_validate(item)
 
-    async def get_model_by_query(self, session: AsyncSession, query: Select, get_none: bool = False) -> M:
-        _log.info("Get model by query %s", self.model.__name__)
+    @overload
+    async def get_by_query(
+        self,
+        session: AsyncSession,
+        query: Select,
+        is_model: Literal[True],
+        is_get_none: Literal[True],
+    ) -> M | None: ...
+
+    @overload
+    async def get_by_query(
+        self,
+        session: AsyncSession,
+        query: Select,
+        is_model: Literal[False],
+        is_get_none: Literal[True],
+    ) -> O | None: ...
+
+    @overload
+    async def get_by_query(
+        self,
+        session: AsyncSession,
+        query: Select,
+        is_model: Literal[True],
+        is_get_none: Literal[False] = False,
+    ) -> M: ...
+
+    @overload
+    async def get_by_query(
+        self,
+        session: AsyncSession,
+        query: Select,
+        is_model: Literal[False] = False,
+        is_get_none: Literal[False] = False,
+    ) -> O: ...
+
+    async def get_by_query(
+        self,
+        session: AsyncSession,
+        query: Select,
+        is_model: bool = True,
+        is_get_none: bool = True,
+    ) -> O | M | None:
+        _log.info("Get by query %s", self.model.__name__)
 
         result = await session.execute(query)
-        item = result.scalars().first()
+        model = result.scalars().first()
 
-        if item is None and not get_none:
+        if model is None:
+            if is_get_none:
+                return None
             raise HTTPException(
                 status_code=404, detail=f"{self.model.__name__} not found")
 
-        return item  # type: ignore
+        if is_model:
+            return model
 
-    async def edit(self, session: AsyncSession, id: UUID, edit_item: E | dict, return_query: Select | None = None) -> O:
+        return self.out_scheme.model_validate(model)
+
+    @overload
+    async def edit(
+        self,
+        session: AsyncSession,
+        id: UUID,
+        edit_item: E | dict,
+        is_model: Literal[True],
+    ) -> M: ...
+
+    @overload
+    async def edit(
+        self,
+        session: AsyncSession,
+        id: UUID,
+        edit_item: E | dict,
+        is_model: Literal[False],
+    ) -> O: ...
+
+    @overload
+    async def edit(
+        self,
+        session: AsyncSession,
+        id: UUID,
+        edit_item: E | dict,
+        is_model: Literal[True],
+        return_query: Select,
+    ) -> M: ...
+
+    @overload
+    async def edit(
+        self,
+        session: AsyncSession,
+        id: UUID,
+        edit_item: E | dict,
+        is_model: Literal[False],
+        return_query: Select,
+    ) -> O: ...
+
+    async def edit(
+        self,
+        session: AsyncSession,
+        id: UUID,
+        edit_item: E | dict,
+        is_model: bool = True,
+        return_query: Select | None = None
+    ) -> O | M | None:
         _log.info("Edit %s", self.model.__name__)
 
         model = await session.get(self.model, id)
@@ -307,73 +432,25 @@ class ItemOrm(Generic[M, I, E, O]):
         await session.flush()
 
         if return_query is not None:
-            return await self.get_by_query(session, return_query)
+            if is_model:
+                return await self.get_by_query(
+                    session=session,
+                    query=return_query,
+                    is_model=True,
+                    is_get_none=False
+                )
+
+            return await self.get_by_query(
+                session=session,
+                query=return_query,
+                is_model=False,
+                is_get_none=False
+            )
+
+        if is_model:
+            return model
 
         return self.out_scheme.model_validate(model)
-
-    async def edit_model(self, session: AsyncSession, id: UUID, edit_item: E | dict) -> M:
-        _log.info("Edit model %s", self.model.__name__)
-
-        model = await session.get(self.model, id)
-
-        if model is None:
-            raise HTTPException(
-                status_code=404, detail=f"{self.model.__name__} not found")
-
-        if isinstance(edit_item, dict):
-            for key, value in edit_item.items():
-                if value is not None:
-                    setattr(model, key, value)
-        else:
-            for key, value in edit_item.model_dump().items():
-                if value is not None:
-                    setattr(model, key, value)
-
-        await session.flush()
-        return model
-
-    async def get_by_id(self, session: AsyncSession, id: UUID, get_none: bool = False) -> O:
-        _log.info("Get by id %s", self.model.__name__)
-
-        model = await session.get(self.model, id)
-
-        if model is None and get_none is False:
-            raise HTTPException(
-                status_code=404, detail=f"{self.model.__name__} not found")
-        if model is None and get_none is True:
-            return None  # type: ignore
-
-        return self.out_scheme.model_validate(model)
-
-    async def get_by_query(self, session: AsyncSession, query: Select) -> O:
-        _log.info("Get by query %s", self.model.__name__)
-
-        result = await session.execute(query)
-        model = result.scalars().first()
-
-        if model is None:
-            raise HTTPException(
-                status_code=404, detail=f"{self.model.__name__} not found")
-
-        return self.out_scheme.model_validate(model)
-
-    async def get_model_by(self, session: AsyncSession, **kwargs) -> M | None:
-        _log.info("Get model by kwargs %s", self.model.__name__)
-
-        model = select(self.model).filter_by(**kwargs)
-        result = await session.execute(model)
-        return result.scalars().first()
-
-    async def get_model_by_id(self, session: AsyncSession, id: UUID, get_none: bool = False) -> M:
-        _log.info("Get model by id %s", self.model.__name__)
-
-        res = await self.get_model_by(session, id=id)
-
-        if res is None and not get_none:
-            raise HTTPException(
-                status_code=404, detail=f"{self.model.__name__} not found")
-
-        return res  # type: ignore
 
     async def in_db(self, session: AsyncSession, item_ids: list[UUID]) -> bool:
         _log.info("In db %s", self.model.__name__)
@@ -387,7 +464,27 @@ class ItemOrm(Generic[M, I, E, O]):
                 return False
         return True
 
-    async def delete(self, session: AsyncSession, id: UUID, query_has_child: Select | None = None) -> None:
+    @overload
+    async def delete(
+        self,
+        session: AsyncSession,
+        id: UUID
+    ) -> ResponseStatus: ...
+
+    @overload
+    async def delete(
+        self,
+        session: AsyncSession,
+        id: UUID,
+        query_has_child: Select
+    ) -> ResponseStatus: ...
+
+    async def delete(
+        self,
+        session: AsyncSession,
+        id: UUID,
+        query_has_child: Select | None = None
+    ) -> ResponseStatus:
         _log.info("Delete %s", self.model.__name__)
 
         model = None
@@ -396,7 +493,12 @@ class ItemOrm(Generic[M, I, E, O]):
             model = res.scalars().first()
 
         if model is not None:
-            await self.edit_model(session, id, {"is_active": False})
+            await self.edit(
+                session=session,
+                id=id,
+                edit_item={"is_active": False},
+                is_model=True
+            )
         else:
             del_model = await session.get(self.model, id)
 
@@ -405,6 +507,8 @@ class ItemOrm(Generic[M, I, E, O]):
                     status_code=404, detail=f"{self.model.__name__} not found")
 
             await session.delete(del_model)
+
+        return ResponseStatus()
 
     async def query(self, session: AsyncSession, query: Select) -> Result:
         _log.info("Query %s", self.model.__name__)

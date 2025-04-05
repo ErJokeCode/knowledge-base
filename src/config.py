@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str
     POSTGRES_DB: str
 
+    MINIO_ROOT_USER: str
+    MINIO_ROOT_PASSWORD: str
+    MINIO_URL: str
+    MINIO_BUCKET_NAME: str
+
     PGADMIN_DEFAULT_EMAIL: str
     PGADMIN_DEFAULT_PASSWORD: str
 

@@ -6,3 +6,6 @@ drop-tables:
 
 recreate-tables:
 	python src/scripts.py --recreate-tables
+
+create-bucket:
+	python src/scripts.py --create-bucket
