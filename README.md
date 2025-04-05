@@ -77,7 +77,7 @@ $ docker exec server_knowledge_base make pg-dr-tb
 $ docker exec server_knowledge_base make pg-recr-tb
 
 # Создание бакета в Minio
-$ docker exec server_knowledge_base make pg-recr-tb
+$ docker exec server_knowledge_base make minio-cr-bk
 ```
 
 
