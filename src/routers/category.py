@@ -7,6 +7,7 @@ from depends.database import get_db_session
 
 from database import core_pg_orm
 from schemes.category import AddCategoryDTO, EditCategoryDTO, OutputCategoryDTO
+from services.category.query import QCategory
 
 
 router = APIRouter(
@@ -16,10 +17,11 @@ router = APIRouter(
 )
 
 
-@router.get("/")
+@router.get("")
 async def get_categories(
     session: Annotated[AsyncSession, Depends(get_db_session)],
     search: str | None = None,
+    id_tag: UUID | None = None,
     sort_by: str | None = None,
     desc: int = 0,
     page: int = 1,
@@ -27,7 +29,7 @@ async def get_categories(
 ) -> ListDTO[OutputCategoryDTO]:
     return await core_pg_orm.category.get_all(
         session=session,
-        search=search,
+        query_select=QCategory.get_all(search=search, id_tag=id_tag),
         search_fields=["name"],
         sort_by=sort_by,
         desc_int=desc,
@@ -49,7 +51,7 @@ async def get_category(
     )
 
 
-@router.post("/")
+@router.post("")
 async def create_category(
     session: Annotated[AsyncSession, Depends(get_db_session)],
     data: AddCategoryDTO

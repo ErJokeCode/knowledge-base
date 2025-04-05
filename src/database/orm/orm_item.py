@@ -41,7 +41,27 @@ class ItemOrm(Generic[M, I, E, O]):
         session: AsyncSession,
         data: I,
         *,
+        is_model: Literal[True] = True,
+        return_query: Select
+    ) -> M: ...
+
+    @overload
+    async def add(
+        self,
+        session: AsyncSession,
+        data: I,
+        *,
         is_model: Literal[False]
+    ) -> O: ...
+
+    @overload
+    async def add(
+        self,
+        session: AsyncSession,
+        data: I,
+        *,
+        is_model: Literal[False],
+        return_query: Select
     ) -> O: ...
 
     @overload
@@ -52,12 +72,26 @@ class ItemOrm(Generic[M, I, E, O]):
         is_return: Literal[False]
     ) -> None: ...
 
-    async def add(self, session: AsyncSession, data: I, is_return: bool = True, is_model: bool = True) -> M | O | None:
-        _log.info("Add %s. Return model", self.model.__name__)
+    async def add(
+        self,
+        session: AsyncSession,
+        data: I,
+        is_return: bool = True,
+        is_model: bool = True,
+        return_query: Select | None = None
+    ) -> M | O | None:
+        _log.info("Add %s", self.model.__name__)
 
         model = self.model(**data.model_dump())
         session.add(model)
         await session.flush()
+
+        if return_query is not None:
+            return_query = return_query.filter(
+                self.model.id == model.id  # type: ignore
+            )
+            r = await session.execute(return_query)
+            model = r.scalars().first()
 
         if not is_return:
             return None
@@ -66,6 +100,23 @@ class ItemOrm(Generic[M, I, E, O]):
             return model
 
         return self.out_scheme.model_validate(model)
+
+    @overload
+    async def get_all(
+        self,
+        session: AsyncSession,
+        query_select: Select | None = None,
+        search: str | None = None,
+        search_fields: list[str] | None = None,
+        sort_by: str | None = None,
+        desc_int: int = 0,
+        page: int = 1,
+        limit: int = -1,
+        has_is_active: bool = False,
+        *,
+        is_pagination: Literal[True] = True,
+        is_model: Literal[False] = False
+    ) -> ListDTO[O]: ...
 
     @overload
     async def get_all(
@@ -100,23 +151,6 @@ class ItemOrm(Generic[M, I, E, O]):
         is_pagination: Literal[False],
         is_model: Literal[True]
     ) -> Sequence[M]: ...
-
-    @overload
-    async def get_all(
-        self,
-        session: AsyncSession,
-        query_select: Select | None = None,
-        search: str | None = None,
-        search_fields: list[str] | None = None,
-        sort_by: str | None = None,
-        desc_int: int = 0,
-        page: int = 1,
-        limit: int = -1,
-        has_is_active: bool = False,
-        *,
-        is_pagination: Literal[True],
-        is_model: Literal[False]
-    ) -> ListDTO[O]: ...
 
     @overload
     async def get_all(
@@ -235,10 +269,10 @@ class ItemOrm(Generic[M, I, E, O]):
         session: AsyncSession,
         id: UUID | None = None,
         *,
-        is_model: Literal[True],
-        is_get_none: Literal[False],
+        is_model: Literal[False] = False,
+        is_get_none: Literal[False] = False,
         **kwargs
-    ) -> M: ...
+    ) -> O: ...
 
     @overload
     async def get_by(
@@ -246,10 +280,10 @@ class ItemOrm(Generic[M, I, E, O]):
         session: AsyncSession,
         id: UUID | None = None,
         *,
-        is_model: Literal[False],
-        is_get_none: Literal[False],
+        is_model: Literal[True] = True,
+        is_get_none: Literal[False] = False,
         **kwargs
-    ) -> O: ...
+    ) -> M: ...
 
     @overload
     async def get_by(
@@ -312,25 +346,8 @@ class ItemOrm(Generic[M, I, E, O]):
         self,
         session: AsyncSession,
         query: Select,
-        is_model: Literal[True],
-        is_get_none: Literal[True],
-    ) -> M | None: ...
-
-    @overload
-    async def get_by_query(
-        self,
-        session: AsyncSession,
-        query: Select,
-        is_model: Literal[False],
-        is_get_none: Literal[True],
-    ) -> O | None: ...
-
-    @overload
-    async def get_by_query(
-        self,
-        session: AsyncSession,
-        query: Select,
-        is_model: Literal[True],
+        id: UUID | None = None,
+        is_model: Literal[True] = True,
         is_get_none: Literal[False] = False,
     ) -> M: ...
 
@@ -339,18 +356,43 @@ class ItemOrm(Generic[M, I, E, O]):
         self,
         session: AsyncSession,
         query: Select,
+        id: UUID | None = None,
         is_model: Literal[False] = False,
         is_get_none: Literal[False] = False,
     ) -> O: ...
+
+    @overload
+    async def get_by_query(
+        self,
+        session: AsyncSession,
+        query: Select,
+        id: UUID | None = None,
+        is_model: Literal[True] = True,
+        is_get_none: Literal[True] = True,
+    ) -> M | None: ...
+
+    @overload
+    async def get_by_query(
+        self,
+        session: AsyncSession,
+        query: Select,
+        id: UUID | None = None,
+        is_model: Literal[False] = False,
+        is_get_none: Literal[True] = True,
+    ) -> O | None: ...
 
     async def get_by_query(
         self,
         session: AsyncSession,
         query: Select,
+        id: UUID | None = None,
         is_model: bool = True,
         is_get_none: bool = True,
     ) -> O | M | None:
         _log.info("Get by query %s", self.model.__name__)
+
+        if id is not None:
+            query = query.filter_by(id=id)
 
         result = await session.execute(query)
         model = result.scalars().first()

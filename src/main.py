@@ -7,6 +7,8 @@ import uvicorn
 from config import settings
 
 from routers.category import router as r_category
+from routers.question import router as r_question
+from routers.tag import router as r_tag
 
 
 _log = logging.getLogger(__name__)
@@ -37,6 +39,8 @@ app.add_middleware(
 )
 
 app.include_router(r_category)
+app.include_router(r_question)
+app.include_router(r_tag)
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

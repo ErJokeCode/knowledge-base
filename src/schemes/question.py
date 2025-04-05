@@ -1,6 +1,8 @@
 import datetime
 from uuid import UUID
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+
+from schemes.answer import OutputAnswerDTO
 
 
 class InputQuestionDTO(BaseModel):
@@ -24,6 +26,40 @@ class OutputQuestionDTO(BaseModel):
     question: str
     created_at: datetime.datetime
     is_active: bool
+
+    answers: list[OutputAnswerDTO] = []
+    tag_questions: list["Tag"] = []
+
+    @field_validator('tag_questions', mode='before')
+    @classmethod
+    def transform_tags(cls, v):
+        if not v:
+            return []
+
+        # Если пришли объекты TagQuestion
+        if all(hasattr(item, 'tag') for item in v):
+            return [item.tag for item in v]
+
+        # Если пришли словари с вложенностью
+        if all(isinstance(item, dict) and 'tag' in item for item in v):
+            return [item['tag'] for item in v]
+
+        return v
+
+    class Config:
+        from_attributes = True
+
+
+class TagQuestion(BaseModel):
+    tag: "Tag"
+
+    class Config:
+        from_attributes = True
+
+
+class Tag(BaseModel):
+    id: UUID
+    title: str
 
     class Config:
         from_attributes = True

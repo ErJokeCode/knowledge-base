@@ -3,107 +3,92 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.orm.base_schemes import ListDTO
+from database import core_pg_orm, ResponseStatus, ListDTO
 from depends.database import get_db_session
-from schemes.question import EditQuestionDTO, InputQuestionDTO, OutputQuestionDTO
-from database import core_pg_orm, ResponseStatus
-from services.question.query import QQuestion
+from schemes.tag import AddTagDTO, EditTagDTO, OutputTagDTO
+from schemes.tag_question import AddTagQuestionDTO, OutputTagQuestionDTO
 
 
 router = APIRouter(
-    prefix="/question",
-    tags=["question"],
+    prefix="/tag",
+    tags=["tag"],
     responses={404: {"description": "Not found"}},
 )
 
 
 @router.get("")
-async def get_questions(
+async def get_tags(
     session: Annotated[AsyncSession, Depends(get_db_session)],
     search: str | None = None,
-    id_category: UUID | None = None,
-    id_tag: UUID | None = None,
     sort_by: str | None = None,
     desc: int = 0,
     page: int = 1,
-    limit: int = -1
-) -> ListDTO[OutputQuestionDTO]:
-    return await core_pg_orm.question.get_all(
+    limit: int = -1,
+) -> ListDTO[OutputTagDTO]:
+    return await core_pg_orm.tag.get_all(
         session=session,
-        query_select=QQuestion.get_all(
-            search=search,
-            id_category=id_category,
-            id_tag=id_tag
-        ),
+        search=search,
+        search_fields=["title"],
         sort_by=sort_by,
         desc_int=desc,
         page=page,
         limit=limit,
-        has_is_active=True,
-        is_pagination=True,
         is_model=False
     )
 
 
 @router.get("/{id}")
-async def get_question(
+async def get_tag(
     session: Annotated[AsyncSession, Depends(get_db_session)],
     id: UUID
-) -> OutputQuestionDTO:
-    return await core_pg_orm.question.get_by_query(
+) -> OutputTagDTO:
+    return await core_pg_orm.tag.get_by(session=session, id=id, is_model=False)
+
+
+@router.post("")
+async def create_tag(
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+    data: AddTagDTO
+) -> OutputTagDTO:
+    return await core_pg_orm.tag.add(
         session=session,
-        query=QQuestion.get_one(),
-        id=id,
+        data=data,
         is_model=False
     )
 
 
-@router.post("")
-async def create_question(
-    session: Annotated[AsyncSession, Depends(get_db_session)],
-    data: InputQuestionDTO
-) -> OutputQuestionDTO:
-    return await core_pg_orm.question.add(
-        session=session,
-        data=data,
-        is_model=False,
-        return_query=QQuestion.get_one()
-    )
-
-
 @router.patch("/{id}")
-async def update_question(
+async def update_tag(
     session: Annotated[AsyncSession, Depends(get_db_session)],
     id: UUID,
-    data: EditQuestionDTO
-) -> OutputQuestionDTO:
-    return await core_pg_orm.question.edit(
+    data: EditTagDTO
+) -> OutputTagDTO:
+    return await core_pg_orm.tag.edit(
         session=session,
         id=id,
         edit_item=data,
-        is_model=False,
-        return_query=QQuestion.get_one()
+        is_model=False
     )
 
 
 @router.delete("/{id}")
-async def delete_question(
+async def delete_tag(
     session: Annotated[AsyncSession, Depends(get_db_session)],
     id: UUID
 ) -> ResponseStatus:
-    return await core_pg_orm.question.delete(session=session, id=id)
+    return await core_pg_orm.tag.delete(session=session, id=id)
 
 
-@router.post("/{id}/tag")
+@router.post("/{id}/question")
 async def add_tag_question(
     session: Annotated[AsyncSession, Depends(get_db_session)],
     id: UUID,
-    id_tag: UUID
-) -> OutputQuestionDTO:
+    id_question: UUID
+) -> OutputTagQuestionDTO:
     tag_q = await core_pg_orm.tag_question.get_by(
         session=session,
-        id_tag=id_tag,
-        id_question=id,
+        id_tag=id,
+        id_question=id_question,
         is_model=True,
         is_get_none=True
     )
@@ -111,23 +96,23 @@ async def add_tag_question(
     if tag_q is not None:
         raise HTTPException(status_code=400, detail="Tag already exists")
 
+    model = AddTagQuestionDTO(id_tag=id, id_question=id_question)
     return await core_pg_orm.tag_question.add(
         session=session,
-        id_question=id,
-        id_tag=id_tag
+        data=model
     )
 
 
-@router.delete("/{id}/tag")
+@router.delete("/{id}/question")
 async def delete_tag_question(
     session: Annotated[AsyncSession, Depends(get_db_session)],
     id: UUID,
-    id_tag: UUID
+    id_question: UUID
 ) -> ResponseStatus:
     model = await core_pg_orm.tag_question.get_by(
         session=session,
-        id_tag=id_tag,
-        id_question=id,
+        id_tag=id,
+        id_question=id_question,
         is_model=True
     )
 
