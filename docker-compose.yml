@@ -39,15 +39,12 @@ services:
     container_name: minio_knowledge_base
     restart: unless-stopped
     ports:
-      - "9000:9000" # API порт (для SDK и CLI)
-      - "9001:9001" # Web-интерфейс (Console)
+      - "9001:9001"
     env_file:
       - .env
-    environment:
-      MINIO_BROWSER_REDIRECT_URL: http://localhost:9001
     volumes:
       - minio_data:/data
-    command: server /data --console-address ":9001" # Запуск сервера + консоль
+    command: server /data --console-address ":9001"
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
       interval: 30s

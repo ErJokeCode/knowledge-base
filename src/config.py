@@ -19,7 +19,8 @@ class Settings(BaseSettings):
 
     MINIO_ROOT_USER: str
     MINIO_ROOT_PASSWORD: str
-    MINIO_URL: str
+    MINIO_HOST: str
+    MINIO_PORT: int
     MINIO_BUCKET_NAME: str
 
     PGADMIN_DEFAULT_EMAIL: str
@@ -44,6 +45,10 @@ class Settings(BaseSettings):
     def DATABASE_URL_asyncpg(self):
         # postgresql+asyncpg://postgres:postgres@localhost:5432/sa
         return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+
+    @property
+    def MINIO_URL(self):
+        return f"http://{self.MINIO_HOST}:{self.MINIO_PORT}"
 
 
 settings = Settings()
