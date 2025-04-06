@@ -27,9 +27,9 @@ class OutputQuestionDTO(BaseModel):
     created_at: datetime.datetime
 
     answers: list[OutputAnswerDTO] = []
-    tag_questions: list["Tag"] = []
+    question_tags: list["Tag"] = []
 
-    @field_validator('tag_questions', mode='before')
+    @field_validator('question_tags', mode='before')
     @classmethod
     def transform_tags(cls, v):
         if not v:

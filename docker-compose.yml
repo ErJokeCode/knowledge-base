@@ -30,7 +30,7 @@ services:
     depends_on:
       - postgresql
     volumes:
-      - .:/app/server_knowledge_base
+      - .:/app
     networks:
       - web_network
 

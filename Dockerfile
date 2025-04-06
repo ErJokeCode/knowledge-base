@@ -1,10 +1,12 @@
 FROM python:3.13.2
 
-WORKDIR /app/server_knowledge_base
+WORKDIR /app
 
-COPY . .
+COPY requirements.txt ./requirements.txt
 
 RUN pip install -r requirements.txt
+
+COPY . .
 
 EXPOSE 8000
 

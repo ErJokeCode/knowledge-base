@@ -55,32 +55,6 @@ async def delete_answer(
     )
 
 
-@router.post("/{id}/tag")
-async def add_tag_answer(
-    session: Annotated[AsyncSession, Depends(get_db_session)],
-    id: UUID,
-    id_tag: UUID
-) -> OutputAnswerDTO:
-    return await s_answer.add_tag_answer(
-        session=session,
-        id=id,
-        id_tag=id_tag
-    )
-
-
-@router.delete("/{id}/tag")
-async def delete_tag_answer(
-    session: Annotated[AsyncSession, Depends(get_db_session)],
-    id: UUID,
-    id_tag: UUID
-) -> ResponseStatus:
-    return await s_answer.delete_tag_answer(
-        session=session,
-        id=id,
-        id_tag=id_tag
-    )
-
-
 @router.post("/{id}/link")
 async def add_link_answer(
     session: Annotated[AsyncSession, Depends(get_db_session)],
@@ -118,12 +92,14 @@ async def add_file_answer(
     )
 
 
-@router.delete("/{id}/file")
+@router.delete("/{id}/file/{file_id}")
 async def delete_file_answer(
     session: Annotated[AsyncSession, Depends(get_db_session)],
-    id: UUID
+    id: UUID,
+    id_file: UUID
 ) -> OutputAnswerDTO:
     return await s_answer.delete_file_answer(
         session=session,
-        id=id
+        id=id,
+        id_file=id_file
     )

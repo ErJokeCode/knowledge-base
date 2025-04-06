@@ -1,7 +1,7 @@
 import asyncio
 from contextlib import asynccontextmanager
 import logging
-from typing import AsyncGenerator, BinaryIO
+from typing import AsyncGenerator, AsyncIterator, BinaryIO
 from aiobotocore.session import get_session  # type: ignore
 from aiobotocore.client import AioBaseClient  # type: ignore
 from fastapi import UploadFile
@@ -76,17 +76,21 @@ class CoreS3:
                 _log.error("Ошибка загрузки файла %s: %s", file.filename, e)
                 raise
 
-    async def download_file(self, file_key: str) -> bytes:
+    async def download_file(self, file_key: str) -> AsyncIterator[bytes]:
         async with self.get_client() as client:
             try:
                 response = await client.get_object(
                     Bucket=self.__bucket_name,
                     Key=file_key
                 )
-                async with response["Body"] as stream:
-                    content = await stream.read()
+                stream = response["Body"]
+                while True:
+                    # Читаем по 1MB за раз
+                    chunk = await stream.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    yield chunk
                 _log.info("Файл успешно получен из хранилища", file_key)
-                return content
             except Exception as e:
                 _log.error(f"Ошибка получения файла {file_key}: {e}")
                 raise

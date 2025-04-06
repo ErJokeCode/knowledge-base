@@ -3,7 +3,7 @@ from uuid import UUID
 from sqlalchemy import Select, select
 from sqlalchemy.orm import selectinload
 
-from models import Answer, Question, TagQuestion
+from models import Answer, MinioFile, MinioFileAnswer, Question, TagAnswer, TagFile, TagQuestion
 
 
 class QQuestion:
@@ -15,15 +15,31 @@ class QQuestion:
             selectinload(
                 Question.answers
             ).selectinload(
-                Answer.tag_answers
+                Answer.answer_tags
+            ).joinedload(
+                TagAnswer.tag
             ),
+
             selectinload(
                 Question.answers
             ).selectinload(
                 Answer.links
             ),
+
             selectinload(
-                Question.tag_questions
+                Question.answers
+            ).selectinload(
+                Answer.files
+            ).joinedload(
+                MinioFileAnswer.file
+            ).selectinload(
+                MinioFile.file_tags
+            ).joinedload(
+                TagFile.tag
+            ),
+
+            selectinload(
+                Question.question_tags
             ).joinedload(
                 TagQuestion.tag
             )
@@ -51,7 +67,7 @@ class QQuestion:
 
         if id_tag:
             query = query.filter(
-                Question.tag_questions.any(
+                Question.question_tags.any(
                     TagQuestion.id_tag == id_tag
                 )
             )
@@ -60,15 +76,31 @@ class QQuestion:
             selectinload(
                 Question.answers
             ).selectinload(
-                Answer.tag_answers
+                Answer.answer_tags
+            ).joinedload(
+                TagAnswer.tag
             ),
+
             selectinload(
                 Question.answers
             ).selectinload(
                 Answer.links
             ),
+
             selectinload(
-                Question.tag_questions
+                Question.answers
+            ).selectinload(
+                Answer.files
+            ).joinedload(
+                MinioFileAnswer.file
+            ).selectinload(
+                MinioFile.file_tags
+            ).joinedload(
+                TagFile.tag
+            ),
+
+            selectinload(
+                Question.question_tags
             ).joinedload(
                 TagQuestion.tag
             )

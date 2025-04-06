@@ -19,7 +19,7 @@ class QCategory:
             selectinload(
                 Category.questions
             ).selectinload(
-                Question.tag_questions
+                Question.question_tags
             ).selectinload(
                 TagQuestion.tag
             )
@@ -42,7 +42,7 @@ class QCategory:
         if id_tag:
             query = query.filter(
                 Category.questions.any(
-                    Question.tag_questions.any(
+                    Question.question_tags.any(
                         TagQuestion.id_tag == id_tag
                     )
                 )
@@ -57,7 +57,7 @@ class QCategory:
             selectinload(
                 Category.questions
             ).selectinload(
-                Question.tag_questions
+                Question.question_tags
             ).selectinload(
                 TagQuestion.tag
             )

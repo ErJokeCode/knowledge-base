@@ -3,7 +3,7 @@ from typing import Literal, Sequence, TypeVar, Generic, overload
 from uuid import UUID
 from fastapi import HTTPException
 from pydantic import BaseModel
-from sqlalchemy import Result, Select, asc, desc, func, or_, select
+from sqlalchemy import Result, Select, asc, delete, desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database.orm.base_schemes import ListDTO, ResponseStatus
@@ -311,8 +311,8 @@ class ItemOrm(Generic[M, I, E, O]):
             self,
             session: AsyncSession,
             id: UUID | None = None,
-            is_model: bool = True,
-            is_get_none: bool = True,
+            is_model: bool = False,
+            is_get_none: bool = False,
             **kwargs) -> O | M | None:
         _log.info("Get by kwargs %s", self.model.__name__)
 
@@ -548,7 +548,10 @@ class ItemOrm(Generic[M, I, E, O]):
                 raise HTTPException(
                     status_code=404, detail=f"{self.model.__name__} not found")
 
-            await session.delete(del_model)
+            await session.execute(
+                delete(self.model).where(self.model.id == id)
+            )
+            await session.flush()
 
         return ResponseStatus()
 

@@ -10,6 +10,7 @@ from routers.category import router as r_category
 from routers.question import router as r_question
 from routers.answer import router as r_answer
 from routers.tag import router as r_tag
+from routers.file import router as r_file
 
 
 _log = logging.getLogger(__name__)
@@ -43,6 +44,7 @@ app.include_router(r_category)
 app.include_router(r_tag)
 app.include_router(r_question)
 app.include_router(r_answer)
+app.include_router(r_file)
 
 
 if __name__ == "__main__":

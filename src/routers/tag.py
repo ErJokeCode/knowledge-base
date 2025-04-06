@@ -6,6 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from database import core_pg_orm, ResponseStatus, ListDTO
 from depends.database import get_db_session
 from schemes.tag import AddTagDTO, EditTagDTO, OutputTagDTO
+from schemes.tag_answer import AddTagAnswerDTO, OutputTagAnswerDTO
+from schemes.tag_file import AddTagFileDTO, OutputTagFileDTO
 from schemes.tag_question import AddTagQuestionDTO, OutputTagQuestionDTO
 
 
@@ -117,6 +119,92 @@ async def delete_tag_question(
     )
 
     return await core_pg_orm.tag_question.delete(
+        session=session,
+        id=model.id
+    )
+
+
+@router.post("/{id}/answer")
+async def add_tag_answer(
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+    id: UUID,
+    id_answer: UUID
+) -> OutputTagAnswerDTO:
+    tag_a = await core_pg_orm.tag_answer.get_by(
+        session=session,
+        id_tag=id,
+        id_answer=id_answer,
+        is_model=True,
+        is_get_none=True
+    )
+
+    if tag_a is not None:
+        raise HTTPException(status_code=400, detail="Tag already exists")
+
+    model = AddTagAnswerDTO(id_tag=id, id_answer=id_answer)
+    return await core_pg_orm.tag_answer.add(
+        session=session,
+        data=model
+    )
+
+
+@router.delete("/{id}/answer")
+async def delete_tag_answer(
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+    id: UUID,
+    id_answer: UUID
+) -> ResponseStatus:
+    model = await core_pg_orm.tag_answer.get_by(
+        session=session,
+        id_tag=id,
+        id_question=id_answer,
+        is_model=True
+    )
+
+    return await core_pg_orm.tag_answer.delete(
+        session=session,
+        id=model.id
+    )
+
+
+@router.post("/{id}/file")
+async def add_tag_answer(
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+    id: UUID,
+    id_file: UUID
+) -> OutputTagFileDTO:
+    tag_f = await core_pg_orm.tag_file.get_by(
+        session=session,
+        id_tag=id,
+        id_file=id_file,
+        is_model=True,
+        is_get_none=True
+    )
+
+    if tag_f is not None:
+        raise HTTPException(status_code=400, detail="Tag already exists")
+
+    model = AddTagFileDTO(id_tag=id, id_file=id_file)
+    return await core_pg_orm.tag_file.add(
+        session=session,
+        data=model
+    )
+
+
+@router.delete("/{id}/file")
+async def delete_tag_answer(
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+    id: UUID,
+    id_file: UUID
+) -> ResponseStatus:
+    model = await core_pg_orm.tag_file.get_by(
+        session=session,
+        id_tag=id,
+        id_file=id_file,
+        is_model=True
+    )
+
+    return await core_pg_orm.tag_file.delete(
         session=session,
         id=model.id
     )

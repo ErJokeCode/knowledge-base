@@ -57,7 +57,7 @@ class Question(Base):
     answers: Mapped[list["Answer"]] = relationship(
         back_populates="question"
     )
-    tag_questions: Mapped[list["TagQuestion"]] = relationship(
+    question_tags: Mapped[list["TagQuestion"]] = relationship(
         back_populates="question"
     )
 
@@ -84,7 +84,7 @@ class Answer(Base):
     feedbacks: Mapped[list["Feedback"]] = relationship(
         back_populates="answer"
     )
-    tag_answers: Mapped[list["TagAnswer"]] = relationship(
+    answer_tags: Mapped[list["TagAnswer"]] = relationship(
         back_populates="answer"
     )
     links: Mapped[list["LinkAnswer"]] = relationship(
@@ -124,13 +124,13 @@ class Tag(Base):
     title: Mapped[str_64]
     type: Mapped[TypeTag]
 
-    tag_questions: Mapped[list["TagQuestion"]] = relationship(
+    question_tags: Mapped[list["TagQuestion"]] = relationship(
         back_populates="tag"
     )
-    tag_answers: Mapped[list["TagAnswer"]] = relationship(
+    answer_tags: Mapped[list["TagAnswer"]] = relationship(
         back_populates="tag"
     )
-    tag_files: Mapped[list["TagFile"]] = relationship(
+    file_tags: Mapped[list["TagFile"]] = relationship(
         back_populates="tag"
     )
 
@@ -147,10 +147,10 @@ class TagQuestion(Base):
     )
 
     tag: Mapped["Tag"] = relationship(
-        back_populates="tag_questions"
+        back_populates="question_tags"
     )
     question: Mapped["Question"] = relationship(
-        back_populates="tag_questions"
+        back_populates="question_tags"
     )
 
 
@@ -166,10 +166,10 @@ class TagAnswer(Base):
     )
 
     tag: Mapped["Tag"] = relationship(
-        back_populates="tag_answers"
+        back_populates="answer_tags"
     )
     answer: Mapped["Answer"] = relationship(
-        back_populates="tag_answers"
+        back_populates="answer_tags"
     )
 
 
@@ -185,10 +185,10 @@ class TagFile(Base):
     )
 
     tag: Mapped["Tag"] = relationship(
-        back_populates="tag_files"
+        back_populates="file_tags"
     )
     file: Mapped["MinioFile"] = relationship(
-        back_populates="tag_files"
+        back_populates="file_tags"
     )
 
 
@@ -216,19 +216,15 @@ class MinioFile(Base):
     __tablename__ = "minio_file"
 
     id: Mapped[uuidpk]
-    id_tag: Mapped[UUID] = mapped_column(
-        ForeignKey("tag.id")
-    )
 
-    filename: Mapped[str_64]
+    filename: Mapped[str_64 | None]
     bucket_name: Mapped[str_64]
-    key: Mapped[str_128]
-    size: Mapped[bint]
+    size: Mapped[bint | None]
     created_at: Mapped[datetime_] = mapped_column(
         default=datetime.datetime.now
     )
 
-    tag_files: Mapped[list["TagFile"]] = relationship(
+    file_tags: Mapped[list["TagFile"]] = relationship(
         back_populates="file"
     )
     answers: Mapped[list["MinioFileAnswer"]] = relationship(

@@ -6,9 +6,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from database import core_pg_orm, core_s3
 from database.orm.base_schemes import ResponseStatus
 from schemes.answer import AddAnswerDTO, InputAnswerDTO, OutputAnswerDTO
+from schemes.file import AddFileDTO
+from schemes.file_answer import AddFileAnswerDTO
 from schemes.link_answer import AddLinkAnswerDTO
 from schemes.tag_answer import AddTagAnswerDTO
 from services.answer.query import QAnswer
+from config import settings
 
 _log = logging.getLogger(__name__)
 
@@ -168,10 +171,10 @@ class SAnswer:
 
         if isinstance(files, list):
             for file in files:
-                _log.info(file.filename)
+                await self.__add_file(session=session, id=id, file=file)
         else:
             file = files
-            _log.info(file.filename)
+            await self.__add_file(session=session, id=id, file=file)
 
         return await core_pg_orm.answer.get_by_query(
             session=session,
@@ -180,9 +183,70 @@ class SAnswer:
             is_model=False
         )
 
+    async def __add_file(
+        self,
+        session: AsyncSession,
+        id: UUID,
+        file: UploadFile
+    ) -> None:
+        a_file = AddFileDTO(
+            filename=file.filename,
+            bucket_name=settings.MINIO_BUCKET_NAME,
+            size=file.size // 1024 if file.size is not None else None,
+        )
+
+        m_file = await core_pg_orm.file.add(
+            session=session,
+            data=a_file,
+            is_model=False
+        )
+
+        await core_s3.upload_file(
+            file_key=str(m_file.id),
+            file=file
+        )
+
+        a_file_answer = AddFileAnswerDTO(
+            id_file=m_file.id,
+            id_answer=id,
+        )
+
+        await core_pg_orm.file_answer.add(
+            session=session,
+            data=a_file_answer
+        )
+
     async def delete_file_answer(
         self,
         session: AsyncSession,
-        id: UUID
-    ):
-        raise HTTPException(status_code=501, detail="Not implemented")
+        id: UUID,
+        id_file: UUID
+    ) -> ResponseStatus:
+        file_ans = await core_pg_orm.file_answer.get_by(
+            session=session,
+            id_answer=id,
+            id_file=id_file,
+            is_model=False
+        )
+
+        resp = await core_pg_orm.file_answer.delete(
+            session=session,
+            id=file_ans.id
+        )
+
+        file_ans_try = await core_pg_orm.file_answer.get_by(
+            session=session,
+            id_file=id_file
+        )
+
+        if file_ans_try is None:
+            await core_pg_orm.file.delete(
+                session=session,
+                id=id_file
+            )
+
+            await core_s3.delete_file(
+                file_key=str(id_file)
+            )
+
+        return resp
