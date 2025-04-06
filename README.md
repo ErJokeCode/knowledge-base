@@ -10,7 +10,7 @@ Backend базы знаний для хранения информации о в
 - [FAST API](https://fastapi.tiangolo.com/)
 - [SQLAlchemy](https://www.sqlalchemy.org/)
 - [PostgreSQL](https://www.postgresql.org/)
-- [Minio]
+- [Minio](https://min.io/)
 
 ## Структура
 ```sh
@@ -65,8 +65,23 @@ $ docker-compose up -d
 $ docker exec server_knowledge_base make first-start
 ```
 
-### API
+### Дополнительные команды make
+```sh
+# Создание таблиц
+$ docker exec server_knowledge_base make pg-cr-tb
 
-Документация API http://localhost:8000/docs#
-Web-интерфейс файлового хранилища http://localhost:9001
-Web PgAdmin http://localhost:8001
+# Удаление таблиц
+$ docker exec server_knowledge_base make pg-dr-tb
+
+# Пересоздание таблиц
+$ docker exec server_knowledge_base make pg-recr-tb
+
+# Создание бакета в Minio
+$ docker exec server_knowledge_base make minio-cr-bk
+```
+
+
+### API
+- Документация API http://localhost:8000/docs#
+- Web-интерфейс файлового хранилища http://localhost:9001
+- Web PgAdmin http://localhost:8001
